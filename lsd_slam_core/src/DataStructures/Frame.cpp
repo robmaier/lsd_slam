@@ -22,6 +22,7 @@
 #include "DataStructures/FrameMemory.h"
 #include "DepthEstimation/DepthMapPixelHypothesis.h"
 #include "Tracking/TrackingReference.h"
+#include <cmath>
 
 namespace lsd_slam
 {
@@ -94,9 +95,9 @@ Frame::~Frame()
 	FrameMemory::getInstance().returnBuffer(data.idepthVar_reAct);
 
 	if(permaRef_colorAndVarData != 0)
-		delete permaRef_colorAndVarData;
+		delete[] permaRef_colorAndVarData;
 	if(permaRef_posData != 0)
-		delete permaRef_posData;
+		delete[] permaRef_posData;
 
 	privateFrameAllocCount--;
 	if(enablePrintDebugInfo && printMemoryDebugInfo)
@@ -154,9 +155,9 @@ void Frame::setPermaRef(TrackingReference* reference)
 	permaRef_mutex.lock();
 
 	if(permaRef_colorAndVarData != 0)
-		delete permaRef_colorAndVarData;
+		delete[] permaRef_colorAndVarData;
 	if(permaRef_posData != 0)
-		delete permaRef_posData;
+		delete[] permaRef_posData;
 
 	permaRefNumPts = reference->numData[QUICK_KF_CHECK_LVL];
 	permaRef_colorAndVarData = new Eigen::Vector2f[permaRefNumPts];
@@ -267,7 +268,7 @@ void Frame::setDepthFromGroundTruth(const float* depth, float cov_scale)
 		{
 			if (x > 0 && x < width0-1 && y > 0 && y < height0-1 && // pyramidMaxGradient is not valid for the border
 					pyrMaxGradient[x+y*width0] >= MIN_ABS_GRAD_CREATE &&
-					!isnanf(*depth) && *depth > 0)
+					!std::isnan(*depth) && *depth > 0)
 			{
 				*pyrIDepth = 1.0f / *depth;
 				*pyrIDepthVar = VAR_GT_INIT_INITIAL * cov_scale;

@@ -21,9 +21,11 @@
 #pragma once
 #include "util/settings.h"
 #include "boost/thread.hpp"
+#include <boost/bind/bind.hpp>
 #include <stdio.h>
 #include <iostream>
 
+using namespace boost::placeholders;
 
 
 namespace lsd_slam

@@ -94,12 +94,8 @@ Compile the two package by typing:
 
 
 ## 2.3 openFabMap for large loop-closure detection [optional]
-If you want to use openFABMAP for large loop closure detection, uncomment the following lines in `lsd_slam_core/CMakeLists.txt` :
-
-    #add_subdirectory(${PROJECT_SOURCE_DIR}/thirdparty/openFabMap)
-    #include_directories(${PROJECT_SOURCE_DIR}/thirdparty/openFabMap/include)
-    #add_definitions("-DHAVE_FABMAP")
-    #set(FABMAP_LIB openFABMAP )
+OpenFABMAP is fetched and built automatically with LSD-SLAM. Its St. Lucia
+training data is kept in `lsd_slam_core/trainingdata`.
 
 **Note for Ubuntu 14.04:** The packaged OpenCV for Ubuntu 14.04 does not include the nonfree module, which is required for openFabMap (which requires SURF features).
 You need to get a full version of OpenCV with nonfree module, which is easiest by compiling your own version. 

@@ -1060,8 +1060,8 @@ float SlamSystem::tryTrackSim3(
 
 
 	if (constraintTracker->diverged ||
-		BtoA.scale() > 1 / Sophus::SophusConstants<sophusType>::epsilon() ||
-		BtoA.scale() < Sophus::SophusConstants<sophusType>::epsilon() ||
+		BtoA.scale() > 1 / Sophus::Constants<sophusType>::epsilon() ||
+		BtoA.scale() < Sophus::Constants<sophusType>::epsilon() ||
 		BtoAInfo(0,0) == 0 ||
 		BtoAInfo(6,6) == 0)
 	{
@@ -1082,8 +1082,8 @@ float SlamSystem::tryTrackSim3(
 
 
 	if (constraintTracker->diverged ||
-		AtoB.scale() > 1 / Sophus::SophusConstants<sophusType>::epsilon() ||
-		AtoB.scale() < Sophus::SophusConstants<sophusType>::epsilon() ||
+		AtoB.scale() > 1 / Sophus::Constants<sophusType>::epsilon() ||
+		AtoB.scale() < Sophus::Constants<sophusType>::epsilon() ||
 		AtoBInfo(0,0) == 0 ||
 		AtoBInfo(6,6) == 0)
 	{

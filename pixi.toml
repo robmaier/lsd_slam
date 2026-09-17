@@ -1,0 +1,31 @@
+[workspace]
+name = "lsd_slam"
+description = "LSD-SLAM, built standalone (no ROS) via pixi"
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "osx-64", "linux-64"]
+
+[dependencies]
+cmake = ">=3.16"
+ninja = "*"
+c-compiler = "*"
+cxx-compiler = "*"
+llvm-openmp = "*"
+pkg-config = "*"
+git = "*"
+eigen = "*"
+sophus = "*"
+opencv = "*"
+suitesparse = "*"
+libboost-devel = "*"
+
+[tasks]
+configure = "cmake -S lsd_slam_core -B lsd_slam_core/build -G Ninja -DCMAKE_BUILD_TYPE=Release"
+build = { cmd = "cmake --build lsd_slam_core/build", depends-on = ["configure"] }
+clean = "rm -rf lsd_slam_core/build lsd_slam_core/bin lsd_slam_core/lib"
+lsdslam-arkit-42444474 = { cmd = "./lsd_slam_core/bin/dataset_slam -c lsd_slam_core/calib/arkit_42444474.cfg -f /Users/robertmaier/dev/data/arkit_scenes/raw/Training/42444474/lowres_wide -r 0", depends-on = ["build"] }
+
+[target.osx-arm64.tasks]
+configure = "cmake -E rm -f lsd_slam_core/build/CMakeCache.txt && cmake -S lsd_slam_core -B lsd_slam_core/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++"
+
+[target.osx-64.tasks]
+configure = "cmake -E rm -f lsd_slam_core/build/CMakeCache.txt && cmake -S lsd_slam_core -B lsd_slam_core/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++"

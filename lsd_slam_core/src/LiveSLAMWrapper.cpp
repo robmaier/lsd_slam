@@ -140,7 +140,7 @@ void LiveSLAMWrapper::newImageCallback(const cv::Mat& img, Timestamp imgTime)
 
 void LiveSLAMWrapper::logCameraPose(const SE3& camToWorld, double time)
 {
-	Sophus::Quaternionf quat = camToWorld.unit_quaternion().cast<float>();
+	Eigen::Quaternionf quat = camToWorld.unit_quaternion().cast<float>();
 	Eigen::Vector3f trans = camToWorld.translation().cast<float>();
 
 	char buffer[1000];

@@ -66,6 +66,7 @@ void Relocalizer::stop()
 
 	KFForReloc.clear();
 	CurrentRelocFrame.reset();
+	resultRelocFrame.reset();
 }
 
 

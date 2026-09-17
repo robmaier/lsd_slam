@@ -192,11 +192,6 @@ void SlamSystem::mergeOptimizationOffset()
 
 	poseConsistencyMutex.unlock();
 
-
-
-
-
-
 	if(needPublish)
 		publishKeyframeGraph();
 }
@@ -224,6 +219,11 @@ void SlamSystem::mappingThreadLoop()
 
 void SlamSystem::finalize()
 {
+	if(currentKeyFrame.get() != nullptr && currentKeyFrame->idxInKeyframes < 0)
+	{
+		finishCurrentKeyframe();
+	}
+
 	printf("Finalizing Graph... finding final constraints!!\n");
 
 	lastNumConstraintsAddedOnFullRetrack = 1;
@@ -698,8 +698,8 @@ void SlamSystem::takeRelocalizeResult()
 	int succFrameID;
 	SE3 succFrameToKF_init;
 	std::shared_ptr<Frame> succFrame;
-	relocalizer.stop();
 	relocalizer.getResult(keyframe, succFrame, succFrameID, succFrameToKF_init);
+	relocalizer.stop();
 	assert(keyframe != 0);
 
 	loadNewCurrentKeyframe(keyframe);

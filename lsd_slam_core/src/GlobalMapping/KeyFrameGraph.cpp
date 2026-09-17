@@ -49,6 +49,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <cmath>
+#include <limits>
 
 #include "util/globalFuncs.h"
 

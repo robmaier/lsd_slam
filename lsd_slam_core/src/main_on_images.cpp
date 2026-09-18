@@ -208,6 +208,9 @@ int main( int argc, char** argv )
 		return 1;
 	}
 
+	// the OpenCV/Qt debug windows are shown from a background thread, which is
+	// not safe on all platforms (e.g. macOS requires GUI calls on the main thread).
+	Util::enableDisplay(gui);
 
 	packagePath = "";
 

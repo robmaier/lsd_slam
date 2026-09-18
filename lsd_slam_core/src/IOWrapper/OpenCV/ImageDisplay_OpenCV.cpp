@@ -2,7 +2,7 @@
 * This file is part of LSD-SLAM.
 *
 * Copyright 2013 Jakob Engel <engelj at in dot tum dot de> (Technical University of Munich)
-* For more information see <http://vision.in.tum.de/lsdslam> 
+	namespace
 *
 * LSD-SLAM is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,10 @@ namespace lsd_slam
 
 namespace Util
 {
+	namespace
+	{
+		bool displayIsEnabled = true;
+	}
 
 	const bool useImageDisplayThread = true;
 
@@ -85,6 +89,9 @@ void makeDisplayThread()
 }
 void displayImage(const char* windowName, const cv::Mat& image, bool autoSize)
 {
+	if(!displayIsEnabled)
+		return;
+
 	if(useImageDisplayThread)
 	{
 		if(imageDisplayThread == 0)
@@ -123,6 +130,11 @@ int waitKeyNoConsume(int milliseconds)
 {
 	// Cannot implement this with OpenCV functions.
 	return cv::waitKey(milliseconds);
+}
+
+void enableDisplay(bool enabled)
+{
+	displayIsEnabled = enabled;
 }
 
 void closeAllWindows()

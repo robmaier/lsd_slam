@@ -42,6 +42,11 @@ namespace Util
 /// On Android, the window name is ignored as all images are output fullscreen.
 void displayImage(const char* windowName, const cv::Mat& image, bool autoSize = true);
 
+/// Globally enables/disables all displayImage() calls (default: enabled).
+/// Useful for headless/batch operation, e.g. on platforms (such as macOS) where
+/// showing an OpenCV/Qt window from a background thread is not supported.
+void enableDisplay(bool enabled);
+
 /// Convenience function which internally converts the image to a cv::Mat
 inline void displayImage(const char* windowName, const float* image, int width, int height)
 {

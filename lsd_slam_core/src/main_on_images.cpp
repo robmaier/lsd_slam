@@ -358,7 +358,20 @@ int main( int argc, char** argv )
 		}
 	}
 
-
+	if(!outDir.empty())
+	{
+		std::filesystem::path outDirPath(outDir);
+		std::error_code ec;
+		std::filesystem::create_directories(outDirPath, ec);
+		std::filesystem::path plyPath = outDirPath / "points.ply";
+		system->savePointCloud(plyPath.string());
+		std::filesystem::path cloudsDir = outDirPath / "clouds";
+		std::filesystem::create_directories(cloudsDir, ec);
+		system->saveKeyframePointClouds(cloudsDir.string(), acceptedFilenames);
+		std::filesystem::path depthVisDir = outDirPath / "depth_vis";
+		std::filesystem::create_directories(depthVisDir, ec);
+		system->saveDepthVisualizations(depthVisDir.string(), acceptedFilenames);
+	}
 
 	delete system;
 	delete undistorter;

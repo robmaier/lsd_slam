@@ -179,6 +179,30 @@ void SlamSystem::setVisualization(Output3DWrapper* outputWrapper)
 	this->outputWrapper = outputWrapper;
 }
 
+void SlamSystem::savePointCloud(const std::string& filename)
+{
+	if(keyFrameGraph != nullptr)
+	{
+		keyFrameGraph->savePointCloud(filename);
+	}
+}
+
+void SlamSystem::saveKeyframePointClouds(const std::string& outputDirectory, const std::vector<std::string>& inputFilenames)
+{
+	if(keyFrameGraph != nullptr)
+	{
+		keyFrameGraph->saveKeyframePointClouds(outputDirectory, inputFilenames);
+	}
+}
+
+void SlamSystem::saveDepthVisualizations(const std::string& outputDirectory, const std::vector<std::string>& inputFilenames)
+{
+	if(keyFrameGraph != nullptr)
+	{
+		keyFrameGraph->saveDepthVisualizations(outputDirectory, inputFilenames);
+	}
+}
+
 void SlamSystem::mergeOptimizationOffset()
 {
 	// update all vertices that are in the graph!

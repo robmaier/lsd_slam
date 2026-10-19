@@ -105,6 +105,10 @@ public:
 
 	void dumpMap(std::string folder);
 
+	void savePointCloud(const std::string& filename);
+	void saveKeyframePointClouds(const std::string& outputDirectory, const std::vector<std::string>& inputFilenames);
+	void saveDepthVisualizations(const std::string& outputDirectory, const std::vector<std::string>& inputFilenames);
+
 	/**
 	 * Adds a new constraint to the graph.
 	 * 

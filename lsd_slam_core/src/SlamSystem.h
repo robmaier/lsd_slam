@@ -103,6 +103,10 @@ public:
 	/** Sets the visualization where point clouds and camera poses will be sent to. */
 	void setVisualization(Output3DWrapper* outputWrapper);
 
+	void savePointCloud(const std::string& filename);
+	void saveKeyframePointClouds(const std::string& outputDirectory, const std::vector<std::string>& inputFilenames);
+	void saveDepthVisualizations(const std::string& outputDirectory, const std::vector<std::string>& inputFilenames);
+
 	void requestDepthMapScreenshot(const std::string& filename);
 
 	bool doMappingIteration();

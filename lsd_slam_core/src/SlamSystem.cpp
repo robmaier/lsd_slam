@@ -279,7 +279,7 @@ void SlamSystem::constraintSearchThreadLoop()
 			bool doneSomething = false;
 			if(keyFrameGraph->keyframesForRetrack.size() > 10)
 			{
-				std::deque< Frame* >::iterator toReTrack = keyFrameGraph->keyframesForRetrack.begin() + (rand() % (keyFrameGraph->keyframesForRetrack.size()/3));
+				std::deque< Frame* >::iterator toReTrack = keyFrameGraph->keyframesForRetrack.begin() + (rng() % (keyFrameGraph->keyframesForRetrack.size()/3));
 				Frame* toReTrackFrame = *toReTrack;
 
 				keyFrameGraph->keyframesForRetrack.erase(toReTrack);
@@ -1439,7 +1439,7 @@ int SlamSystem::findConstraintsForNewKeyFrames(Frame* newKeyFrame, bool forcePar
 	if(maxNumFarCandidates < 5) maxNumFarCandidates = 5;
 	while((int)farCandidates.size() > maxNumFarCandidates)
 	{
-		int toDelete = rand() % farCandidates.size();
+		int toDelete = rng() % farCandidates.size();
 		if(farCandidates[toDelete] != fabMapResult)
 		{
 			farCandidates[toDelete] = farCandidates.back();

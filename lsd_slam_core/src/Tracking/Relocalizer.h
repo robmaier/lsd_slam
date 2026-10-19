@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <iostream>
 #include "util/SophusUtil.h"
+#include <random>
 
 
 namespace lsd_slam
@@ -73,6 +74,8 @@ private:
 
 
 	void threadLoop(int idx);
+
+	std::mt19937 rng;
 };
 
 }

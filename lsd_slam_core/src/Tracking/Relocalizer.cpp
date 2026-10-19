@@ -102,7 +102,7 @@ void Relocalizer::start(std::vector<Frame*, Eigen::aligned_allocator<lsd_slam::F
 		KFForReloc.push_back(allKeyframesList[k]);
 
 		// swap with a random element
-		int ridx = rand()%(KFForReloc.size());
+		int ridx = rng()%(KFForReloc.size());
 		Frame* tmp = KFForReloc.back();
 		KFForReloc.back() = KFForReloc[ridx];
 		KFForReloc[ridx] = tmp;

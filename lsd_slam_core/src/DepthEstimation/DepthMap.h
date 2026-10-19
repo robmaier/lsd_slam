@@ -24,6 +24,7 @@
 #include "util/settings.h"
 #include "util/IndexThreadReduce.h"
 #include "util/SophusUtil.h"
+#include <random>
 
 
 
@@ -98,6 +99,9 @@ public:
 	IndexThreadReduce threadReducer;
 
 private:
+	// fixed-seed generator for random initialization (reproducible, no shared global state).
+	std::mt19937 rng;
+
 	// camera matrix etc.
 	Eigen::Matrix3f K, KInv;
 	float fx,fy,cx,cy;

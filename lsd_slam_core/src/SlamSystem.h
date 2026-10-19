@@ -20,6 +20,7 @@
 
 #pragma once
 #include <vector>
+#include <random>
 #include <boost/thread.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/condition_variable.hpp>
@@ -253,6 +254,7 @@ private:
 	void takeRelocalizeResult();
 
 	void constraintSearchThreadLoop();
+	std::mt19937 rng;	// used by constraint search only
 	/** Calculates a scale independent error norm for reciprocal tracking results a and b with associated information matrices. */
 	float tryTrackSim3(
 			TrackingReference* A, TrackingReference* B,

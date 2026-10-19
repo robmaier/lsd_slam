@@ -22,7 +22,8 @@ libboost-devel = "*"
 configure = "cmake -S lsd_slam_core -B lsd_slam_core/build -G Ninja -DCMAKE_BUILD_TYPE=Release"
 build = { cmd = "cmake --build lsd_slam_core/build", depends-on = ["configure"] }
 clean = "rm -rf lsd_slam_core/build lsd_slam_core/bin lsd_slam_core/lib"
-lsdslam-arkit-42444474 = { cmd = "./lsd_slam_core/bin/dataset_slam -c lsd_slam_core/calib/arkit_42444474.cfg -f /Users/robertmaier/dev/data/arkit_scenes/raw/Training/42444474/lowres_wide -r 0", depends-on = ["build"] }
+lsdslam-arkit-42444474 = { cmd = "./lsd_slam_core/bin/dataset_slam -c lsd_slam_core/calib/arkit_42444474.cfg -f $ARKIT_SEQ -r 0", env = { ARKIT_SEQ = "$HOME/dev/data/arkit_scenes/raw/Training/42444474/lowres_wide" }, depends-on = ["build"] }
+determinism-check = { cmd = "./lsd_slam_core/bin/dataset_slam -c lsd_slam_core/calib/arkit_42444474.cfg -f $ARKIT_SEQ -r 0 --poses lsd_slam_core/build/poses_a.txt && ./lsd_slam_core/bin/dataset_slam -c lsd_slam_core/calib/arkit_42444474.cfg -f $ARKIT_SEQ -r 0 --poses lsd_slam_core/build/poses_b.txt && cmp lsd_slam_core/build/poses_a.txt lsd_slam_core/build/poses_b.txt && echo DETERMINISTIC", env = { ARKIT_SEQ = "$HOME/dev/data/arkit_scenes/raw/Training/42444474/lowres_wide" }, depends-on = ["build"] }
 
 [target.osx-arm64.tasks]
 configure = "cmake -E rm -f lsd_slam_core/build/CMakeCache.txt && cmake -S lsd_slam_core -B lsd_slam_core/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++"

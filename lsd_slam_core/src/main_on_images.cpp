@@ -22,6 +22,7 @@
 #include "util/settings.h"
 #include "util/globalFuncs.h"
 #include "SlamSystem.h"
+#include "DataStructures/FramePoseStruct.h"
 
 #include <sstream>
 #include <fstream>
@@ -144,10 +145,11 @@ void printUsage(const char* argv0)
 	printf("  -r, --hz      playback rate in Hz; 0 (default) runs as fast as possible\n");
 	printf("  -o, --output  path to output directory (points.ply will be created inside) (optional)\n");
 	printf("  --gui         show debug visualization windows (off by default; not supported on all platforms)\n");
+	printf("  --poses FILE  write all tracked frame poses (exact hex floats) to FILE; identical runs give identical files\n");
 }
 
 /// Very small command line parser: supports "-c val", "--calib val" and "--calib=val".
-bool parseArgs(int argc, char** argv, std::string &calibFile, std::string &source, double &hz, bool &gui, std::string &outDir)
+bool parseArgs(int argc, char** argv, std::string &calibFile, std::string &source, double &hz, bool &gui, std::string &outDir, std::string &poseFile)
 {
 	auto matches = [](const char* arg, const char* shortOpt, const char* longOpt)
 	{
@@ -178,6 +180,8 @@ bool parseArgs(int argc, char** argv, std::string &calibFile, std::string &sourc
 			outDir = takeValue();
 		else if(matches(argv[i], "", "--gui"))
 			gui = true;
+		else if(matches(argv[i], "", "--poses") || arg.rfind("--poses=", 0) == 0)
+			poseFile = takeValue();
 		else if(matches(argv[i], "-h", "--help"))
 			return false;
 		else
@@ -199,10 +203,11 @@ int main( int argc, char** argv )
 	std::string calibFile;
 	std::string source;
 	std::string outDir;
+	std::string poseFile;
 	double hz = 0;
 	bool gui = false;
 
-	if(!parseArgs(argc, argv, calibFile, source, hz, gui, outDir))
+	if(!parseArgs(argc, argv, calibFile, source, hz, gui, outDir, poseFile))
 	{
 		printUsage(argv[0]);
 		return 1;
@@ -332,6 +337,26 @@ int main( int argc, char** argv )
 
 
 	system->finalize();
+
+	if(!poseFile.empty())
+	{
+		FILE* f = fopen(poseFile.c_str(), "w");
+		if(f == 0)
+			printf("could not open %s for writing!\n", poseFile.c_str());
+		else
+		{
+			for(FramePoseStruct* pose : system->getAllPoses())
+			{
+				const Sophus::Matrix4d m = pose->getCamToWorld().matrix();
+				fprintf(f, "%d", pose->frameID);
+				for(int r=0;r<4;r++)
+					for(int c=0;c<4;c++)
+						fprintf(f, " %a", m(r,c));
+				fprintf(f, "\n");
+			}
+			fclose(f);
+		}
+	}
 
 
 

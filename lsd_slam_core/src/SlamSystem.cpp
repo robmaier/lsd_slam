@@ -1236,13 +1236,12 @@ int SlamSystem::findConstraintsForNewKeyFrames(Frame* newKeyFrame, bool forcePar
 	// =============== get all potential candidates and their initial relative pose. =================
 	std::vector<KFConstraintStruct*, Eigen::aligned_allocator<KFConstraintStruct*> > constraints;
 	Frame* fabMapResult = 0;
-	std::unordered_set<Frame*, std::hash<Frame*>, std::equal_to<Frame*>,
-		Eigen::aligned_allocator< Frame* > > candidates = trackableKeyFrameSearch->findCandidates(newKeyFrame, fabMapResult, useFABMAP, closeCandidatesTH);
+	FrameSet candidates = trackableKeyFrameSearch->findCandidates(newKeyFrame, fabMapResult, useFABMAP, closeCandidatesTH);
 	std::map< Frame*, Sim3, std::less<Frame*>, Eigen::aligned_allocator<std::pair<Frame* const, Sim3> > > candidateToFrame_initialEstimateMap;
 
 
 	// erase the ones that are already neighbours.
-	for(std::unordered_set<Frame*>::iterator c = candidates.begin(); c != candidates.end();)
+	for(FrameSet::iterator c = candidates.begin(); c != candidates.end();)
 	{
 		if(newKeyFrame->neighbors.find(*c) != newKeyFrame->neighbors.end())
 		{
@@ -1272,8 +1271,7 @@ int SlamSystem::findConstraintsForNewKeyFrames(Frame* newKeyFrame, bool forcePar
 
 	// =============== distinguish between close and "far" candidates in Graph =================
 	// Do a first check on trackability of close candidates.
-	std::unordered_set<Frame*, std::hash<Frame*>, std::equal_to<Frame*>,
-		Eigen::aligned_allocator< Frame* > > closeCandidates;
+	FrameSet closeCandidates;
 	std::vector<Frame*, Eigen::aligned_allocator<Frame*> > farCandidates;
 	Frame* parent = newKeyFrame->hasTrackingParent() ? newKeyFrame->getTrackingParent() : 0;
 
@@ -1343,7 +1341,7 @@ int SlamSystem::findConstraintsForNewKeyFrames(Frame* newKeyFrame, bool forcePar
 	int farAll = farCandidates.size();
 
 	// erase the ones that we tried already before (close)
-	for(std::unordered_set<Frame*>::iterator c = closeCandidates.begin(); c != closeCandidates.end();)
+	for(FrameSet::iterator c = closeCandidates.begin(); c != closeCandidates.end();)
 	{
 		if(newKeyFrame->trackingFailed.find(*c) == newKeyFrame->trackingFailed.end())
 		{

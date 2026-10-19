@@ -26,6 +26,7 @@
 #include "DataStructures/FramePoseStruct.h"
 #include "DataStructures/FrameMemory.h"
 #include "unordered_set"
+#include "DataStructures/FrameSet.h"
 #include "util/settings.h"
 
 
@@ -156,8 +157,7 @@ public:
 
 
 	/** Pointers to all adjacent Frames in graph. empty for non-keyframes.*/
-	std::unordered_set< Frame*, std::hash<Frame*>, std::equal_to<Frame*>,
-		Eigen::aligned_allocator< Frame* > > neighbors;
+	FrameSet neighbors;
 
 	/** Multi-Map indicating for which other keyframes with which initialization tracking failed.*/
 	std::unordered_multimap< Frame*, Sim3, std::hash<Frame*>, std::equal_to<Frame*>,
@@ -446,6 +446,13 @@ inline void Frame::clear_refPixelWasGood()
 {
 	FrameMemory::getInstance().returnBuffer(reinterpret_cast<float*>(data.refPixelWasGood));
 	data.refPixelWasGood=0;
+}
+
+inline bool FrameIdLess::operator()(const Frame* a, const Frame* b) const
+{
+	if(a->id() != b->id())
+		return a->id() < b->id();
+	return a < b;
 }
 
 

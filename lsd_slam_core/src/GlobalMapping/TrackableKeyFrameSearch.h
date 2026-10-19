@@ -24,6 +24,7 @@
 #include <unordered_set>
 #include <Eigen/StdVector>
 #include "util/SophusUtil.h"
+#include "DataStructures/FrameSet.h"
 
 #ifdef HAVE_FABMAP
 	#include "GlobalMapping/FabMap.h"
@@ -68,7 +69,7 @@ public:
 	 * Finds candidates for trackable frames.
 	 * Returns the most likely candidates first.
 	 */
-	std::unordered_set<Frame*, std::hash<Frame*>, std::equal_to<Frame*>, Eigen::aligned_allocator< Frame* > > findCandidates(Frame* keyframe, Frame* &fabMapResult_out, bool includeFABMAP=true, bool closenessTH=1.0);
+	FrameSet findCandidates(Frame* keyframe, Frame* &fabMapResult_out, bool includeFABMAP=true, bool closenessTH=1.0);
 	Frame* findRePositionCandidate(Frame* frame, float maxScore=1);
 	
 

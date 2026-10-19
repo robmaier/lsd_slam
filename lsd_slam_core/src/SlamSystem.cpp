@@ -49,8 +49,8 @@
 using namespace lsd_slam;
 
 
-SlamSystem::SlamSystem(int w, int h, Eigen::Matrix3f K, bool enableSLAM)
-: SLAMEnabled(enableSLAM), relocalizer(w,h,K)
+SlamSystem::SlamSystem(int w, int h, Eigen::Matrix3f K, bool enableSLAM, bool deterministicMode)
+: SLAMEnabled(enableSLAM), deterministic(deterministicMode), relocalizer(w,h,K,deterministicMode)
 {
 	if(w%16 != 0 || h%16!=0)
 	{
@@ -108,12 +108,17 @@ SlamSystem::SlamSystem(int w, int h, Eigen::Matrix3f K, bool enableSLAM)
 	depthMapScreenshotFlag = false;
 	lastTrackingClosenessScore = 0;
 
-	thread_mapping = boost::thread(&SlamSystem::mappingThreadLoop, this);
+	deterministicFailedToRetrack = 0;
 
-	if(SLAMEnabled)
+	if(!deterministic)
 	{
-		thread_constraint_search = boost::thread(&SlamSystem::constraintSearchThreadLoop, this);
-		thread_optimization = boost::thread(&SlamSystem::optimizationThreadLoop, this);
+		thread_mapping = boost::thread(&SlamSystem::mappingThreadLoop, this);
+
+		if(SLAMEnabled)
+		{
+			thread_constraint_search = boost::thread(&SlamSystem::constraintSearchThreadLoop, this);
+			thread_optimization = boost::thread(&SlamSystem::optimizationThreadLoop, this);
+		}
 	}
 
 
@@ -136,9 +141,10 @@ SlamSystem::~SlamSystem()
 	newKeyFrameCreatedSignal.notify_all();
 	newConstraintCreatedSignal.notify_all();
 
-	thread_mapping.join();
-	thread_constraint_search.join();
-	thread_optimization.join();
+	// in deterministic mode (or without SLAM) not all threads were started.
+	if(thread_mapping.joinable()) thread_mapping.join();
+	if(thread_constraint_search.joinable()) thread_constraint_search.join();
+	if(thread_optimization.joinable()) thread_optimization.join();
 	printf("DONE waiting for SlamSystem's threads to exit\n");
 
 	if(trackableKeyFrameSearch != 0) delete trackableKeyFrameSearch;
@@ -219,6 +225,12 @@ void SlamSystem::mappingThreadLoop()
 
 void SlamSystem::finalize()
 {
+	if(deterministic)
+	{
+		finalizeDeterministic();
+		return;
+	}
+
 	if(currentKeyFrame.get() != nullptr && currentKeyFrame->idxInKeyframes < 0)
 	{
 		finishCurrentKeyframe();
@@ -332,16 +344,8 @@ void SlamSystem::constraintSearchThreadLoop()
 		if(doFullReConstraintTrack)
 		{
 			lock.unlock();
-			printf("Optizing Full Map!\n");
 
-			int added = 0;
-			for(unsigned int i=0;i<keyFrameGraph->keyframesAll.size();i++)
-			{
-				if(keyFrameGraph->keyframesAll[i]->pose->isInGraph)
-					added += findConstraintsForNewKeyFrames(keyFrameGraph->keyframesAll[i], false, false, 1.0);
-			}
-
-			printf("Done optizing Full Map! Added %d constraints.\n", added);
+			int added = fullReConstraintTrack();
 
 			doFullReConstraintTrack = false;
 
@@ -354,6 +358,132 @@ void SlamSystem::constraintSearchThreadLoop()
 	}
 
 	printf("Exited constraint search thread \n");
+}
+
+int SlamSystem::fullReConstraintTrack()
+{
+	printf("Optizing Full Map!\n");
+
+	int added = 0;
+	for(unsigned int i=0;i<keyFrameGraph->keyframesAll.size();i++)
+	{
+		if(keyFrameGraph->keyframesAll[i]->pose->isInGraph)
+			added += findConstraintsForNewKeyFrames(keyFrameGraph->keyframesAll[i], false, false, 1.0);
+	}
+
+	printf("Done optizing Full Map! Added %d constraints.\n", added);
+	return added;
+}
+
+
+// Runs, in a fixed order and on the calling thread, what the mapping / constraint search / optimization
+// threads would do concurrently. Called after every tracked frame.
+void SlamSystem::runDeterministicSchedule()
+{
+	mapDeterministic();
+	constraintSearchDeterministic();
+	optimizeDeterministic();
+}
+
+void SlamSystem::mapDeterministic()
+{
+	// doMappingIteration() always returns true while tracking is lost, so it must not be looped in that state.
+	while(trackingIsGood && doMappingIteration()) {}
+
+	if(!trackingIsGood)
+	{
+		// finishes the map, starts the relocalizer and tries to relocalize on the latest frame.
+		doMappingIteration();
+
+		// relocalized: map the relocalized frame.
+		while(trackingIsGood && doMappingIteration()) {}
+	}
+}
+
+void SlamSystem::constraintSearchDeterministic()
+{
+	if(!SLAMEnabled)
+		return;
+
+	while(true)
+	{
+		Frame* newKF = 0;
+		newKeyFrameMutex.lock();
+		if(!newKeyFrames.empty())
+		{
+			newKF = newKeyFrames.front();
+			newKeyFrames.pop_front();
+		}
+		newKeyFrameMutex.unlock();
+
+		if(newKF == 0)
+			break;
+
+		findConstraintsForNewKeyFrames(newKF, true, true, 1.0);
+		deterministicFailedToRetrack = 0;
+		FrameMemory::getInstance().pruneActiveFrames();
+	}
+
+	// the free-running thread re-tracks keyframes whenever it is idle; here: a fixed amount per frame.
+	keyFrameGraph->keyframesForRetrackMutex.lock();
+	if(keyFrameGraph->keyframesForRetrack.size() > 10 && deterministicFailedToRetrack < (int)keyFrameGraph->keyframesForRetrack.size() - 5)
+	{
+		std::deque< Frame* >::iterator toReTrack = keyFrameGraph->keyframesForRetrack.begin() + (rng() % (keyFrameGraph->keyframesForRetrack.size()/3));
+		Frame* toReTrackFrame = *toReTrack;
+
+		keyFrameGraph->keyframesForRetrack.erase(toReTrack);
+		keyFrameGraph->keyframesForRetrack.push_back(toReTrackFrame);
+		keyFrameGraph->keyframesForRetrackMutex.unlock();
+
+		int found = findConstraintsForNewKeyFrames(toReTrackFrame, false, false, 2.0);
+		deterministicFailedToRetrack = found == 0 ? deterministicFailedToRetrack + 1 : 0;
+	}
+	else
+		keyFrameGraph->keyframesForRetrackMutex.unlock();
+}
+
+void SlamSystem::optimizeDeterministic()
+{
+	if(!SLAMEnabled)
+		return;
+
+	newConstraintMutex.lock();
+	bool constraintsAdded = newConstraintAdded;
+	newConstraintAdded = false;
+	newConstraintMutex.unlock();
+
+	if(!constraintsAdded)
+		return;
+
+	while(optimizationIteration(5, 0.02)) {}
+	mergeOptimizationOffset();
+}
+
+void SlamSystem::finalizeDeterministic()
+{
+	if(currentKeyFrame.get() != nullptr && currentKeyFrame->idxInKeyframes < 0)
+		finishCurrentKeyframe();
+
+	if(!SLAMEnabled)
+		return;
+
+	constraintSearchDeterministic();
+	optimizeDeterministic();
+
+	printf("Finalizing Graph... finding final constraints!!\n");
+	int added = 1;
+	while(added != 0)
+	{
+		added = fullReConstraintTrack();
+		optimizeDeterministic();
+	}
+
+	printf("Finalizing Graph... optimizing!!\n");
+	optimizationIteration(50, 0.001);
+	while(optimizationIteration(5, 0.02)) {}
+	mergeOptimizationOffset();
+
+	printf("Done Finalizing Graph.!!\n");
 }
 
 void SlamSystem::optimizationThreadLoop()
@@ -899,6 +1029,9 @@ void SlamSystem::trackFrame(uchar* image, unsigned int frameID, bool blockUntilM
 		unmappedTrackedFramesMutex.lock();
 		unmappedTrackedFramesSignal.notify_one();
 		unmappedTrackedFramesMutex.unlock();
+
+		if(deterministic)
+			runDeterministicSchedule();
 		return;
 	}
 
@@ -963,6 +1096,9 @@ void SlamSystem::trackFrame(uchar* image, unsigned int frameID, bool blockUntilM
 		unmappedTrackedFramesMutex.unlock();
 
 		manualTrackingLossIndicated = false;
+
+		if(deterministic)
+			runDeterministicSchedule();
 		return;
 	}
 
@@ -1021,10 +1157,16 @@ void SlamSystem::trackFrame(uchar* image, unsigned int frameID, bool blockUntilM
 
 
 	unmappedTrackedFramesMutex.lock();
-	if(unmappedTrackedFrames.size() < 50 || (unmappedTrackedFrames.size() < 100 && trackingNewFrame->getTrackingParent()->numMappedOnThisTotal < 10))
+	if(deterministic || unmappedTrackedFrames.size() < 50 || (unmappedTrackedFrames.size() < 100 && trackingNewFrame->getTrackingParent()->numMappedOnThisTotal < 10))
 		unmappedTrackedFrames.push_back(trackingNewFrame);
 	unmappedTrackedFramesSignal.notify_one();
 	unmappedTrackedFramesMutex.unlock();
+
+	if(deterministic)
+	{
+		runDeterministicSchedule();
+		return;
+	}
 
 	// implement blocking
 	if(blockUntilMapped && trackingIsGood)

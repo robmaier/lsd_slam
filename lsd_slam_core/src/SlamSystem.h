@@ -66,10 +66,14 @@ public:
 	Eigen::Matrix3f K;
 	const bool SLAMEnabled;
 
+	// If set, no background threads are used: mapping, constraint search and optimization run synchronously
+	// (in a fixed order) from within trackFrame() / finalize(), which makes runs reproducible.
+	const bool deterministic;
+
 	bool trackingIsGood;
 
 
-	SlamSystem(int w, int h, Eigen::Matrix3f K, bool enableSLAM = true);
+	SlamSystem(int w, int h, Eigen::Matrix3f K, bool enableSLAM = true, bool deterministicMode = false);
 	SlamSystem(const SlamSystem&) = delete;
 	SlamSystem& operator=(const SlamSystem&) = delete;
 	~SlamSystem();
@@ -254,6 +258,15 @@ private:
 	void takeRelocalizeResult();
 
 	void constraintSearchThreadLoop();
+
+	// ============= deterministic (single-threaded) operation =============
+	void runDeterministicSchedule();
+	void mapDeterministic();
+	void constraintSearchDeterministic();
+	void optimizeDeterministic();
+	void finalizeDeterministic();
+	int fullReConstraintTrack();
+	int deterministicFailedToRetrack;
 	std::mt19937 rng;	// used by constraint search only
 	/** Calculates a scale independent error norm for reciprocal tracking results a and b with associated information matrices. */
 	float tryTrackSim3(

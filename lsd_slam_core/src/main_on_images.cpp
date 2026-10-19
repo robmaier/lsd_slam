@@ -208,6 +208,12 @@ int main( int argc, char** argv )
 		return 1;
 	}
 
+	// Replaying a dataset must be reproducible: the SLAM system runs without background threads (see
+	// SlamSystem::deterministic), and the remaining parallel helpers are switched off as well.
+	multiThreading = false;
+	cv::setNumThreads(1);
+	Eigen::setNbThreads(1);
+
 	// the OpenCV/Qt debug windows are shown from a background thread, which is
 	// not safe on all platforms (e.g. macOS requires GUI calls on the main thread).
 	Util::enableDisplay(gui);
@@ -243,7 +249,7 @@ int main( int argc, char** argv )
 
 
 	// make slam system
-	SlamSystem* system = new SlamSystem(w, h, K, doSlam);
+	SlamSystem* system = new SlamSystem(w, h, K, doSlam, true);
 	system->setVisualization(outputWrapper);
 
 
@@ -316,7 +322,7 @@ int main( int argc, char** argv )
 			printf("FULL RESET!\n");
 			delete system;
 
-			system = new SlamSystem(w, h, K, doSlam);
+			system = new SlamSystem(w, h, K, doSlam, true);
 			system->setVisualization(outputWrapper);
 
 			fullResetRequested = false;

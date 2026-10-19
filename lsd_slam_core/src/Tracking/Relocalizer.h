@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <iostream>
 #include "util/SophusUtil.h"
+#include <memory>
 #include <random>
 
 
@@ -32,11 +33,13 @@ namespace lsd_slam
 
 class Frame;
 class Sim3Tracker;
+class SE3Tracker;
 
 class Relocalizer
 {
 public:
-	Relocalizer(int w, int h, Eigen::Matrix3f K);
+	/** In deterministic mode no worker threads are used: waitResult() synchronously tries all keyframes, in a fixed order. */
+	Relocalizer(int w, int h, Eigen::Matrix3f K, bool deterministic = false);
 	~Relocalizer();
 
 	void updateCurrentFrame(std::shared_ptr<Frame> currentFrame);
@@ -75,7 +78,15 @@ private:
 
 	void threadLoop(int idx);
 
+	// tries to relocalize frame on keyframe todo (and its neighbours). Returns true on success.
+	bool evaluateCandidate(SE3Tracker* tracker, Frame* todo, const std::shared_ptr<Frame>& frame, Frame* &out_keyframe, SE3 &out_frameToKeyframe, float &out_score);
+
+	// deterministic mode: tries CurrentRelocFrame against all keyframes and takes the best-scoring success (ties: lowest keyframe id).
+	bool searchSynchronously();
+
+	const bool deterministic;
 	std::mt19937 rng;
+	SE3Tracker* syncTracker;
 };
 
 }

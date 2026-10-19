@@ -27,7 +27,8 @@ namespace lsd_slam
 {
 
 
-Relocalizer::Relocalizer(int w, int h, Eigen::Matrix3f K)
+Relocalizer::Relocalizer(int w, int h, Eigen::Matrix3f K, bool deterministic)
+: deterministic(deterministic), syncTracker(0)
 {
 	for(int i=0;i<RELOCALIZE_THREADS;i++)
 		running[i] = false;
@@ -49,6 +50,7 @@ Relocalizer::Relocalizer(int w, int h, Eigen::Matrix3f K)
 Relocalizer::~Relocalizer()
 {
 	stop();
+	delete syncTracker;
 }
 void Relocalizer::stop()
 {
@@ -114,6 +116,9 @@ void Relocalizer::start(std::vector<Frame*, Eigen::aligned_allocator<lsd_slam::F
 	continueRunning = true;
 	isRunning = true;
 
+	if(deterministic)
+		return;
+
 	// start threads
 	for(int i=0;i<RELOCALIZE_THREADS;i++)
 	{
@@ -124,6 +129,9 @@ void Relocalizer::start(std::vector<Frame*, Eigen::aligned_allocator<lsd_slam::F
 
 bool Relocalizer::waitResult(int milliseconds)
 {
+	if(deterministic)
+		return hasResult || searchSynchronously();
+
 	boost::unique_lock<boost::mutex> lock(exMutex);
 	if(hasResult) return true;
 	resultReadySignal.timed_wait(lock, boost::posix_time::milliseconds(milliseconds));
@@ -163,12 +171,44 @@ void Relocalizer::threadLoop(int idx)
 		{
 			Frame* todo = KFForReloc[nextRelocIDX%KFForReloc.size()];
 			nextRelocIDX++;
-			if(todo->neighbors.size() <= 2) continue;
-
 			std::shared_ptr<Frame> myRelocFrame = CurrentRelocFrame;
 
 			lock.unlock();
 
+			Frame* bestKF = 0;
+			SE3 bestKFToFrame;
+			float score;
+			if(evaluateCandidate(tracker, todo, myRelocFrame, bestKF, bestKFToFrame, score))
+			{
+				// set everything to stop!
+				continueRunning = false;
+				lock.lock();
+				resultRelocFrame = myRelocFrame;
+				resultFrameID = myRelocFrame->id();
+				resultKF = bestKF;
+				resultFrameToKeyframe = bestKFToFrame.inverse();
+				resultReadySignal.notify_all();
+				hasResult = true;
+				lock.unlock();
+			}
+
+			lock.lock();
+		}
+		else
+		{
+			newCurrentFrameSignal.wait(lock);
+		}
+	}
+
+	delete tracker;
+}
+
+
+bool Relocalizer::evaluateCandidate(SE3Tracker* tracker, Frame* todo, const std::shared_ptr<Frame>& myRelocFrame, Frame* &out_keyframe, SE3 &out_frameToKeyframe, float &out_score)
+{
+	if(todo->neighbors.size() <= 2) return false;
+	{
+		{
 			// initial Alignment
 			SE3 todoToFrame = tracker->trackFrameOnPermaref(todo, myRelocFrame.get(), SE3());
 
@@ -211,16 +251,10 @@ void Relocalizer::threadLoop(int idx)
 								100*bestNeightbourGoodVal, 100*bestNeighbourUsage,
 								numGoodNeighbours, numGoodNeighbours+numBadNeighbours);
 
-					// set everything to stop!
-					continueRunning = false;
-					lock.lock();
-					resultRelocFrame = myRelocFrame;
-					resultFrameID = myRelocFrame->id();
-					resultKF = bestKF;
-					resultFrameToKeyframe = bestKFToFrame.inverse();
-					resultReadySignal.notify_all();
-					hasResult = true;
-					lock.unlock();
+					out_keyframe = bestKF;
+					out_frameToKeyframe = bestKFToFrame;
+					out_score = bestNeightbourGoodVal;
+					return true;
 				}
 				else
 				{
@@ -231,15 +265,51 @@ void Relocalizer::threadLoop(int idx)
 								numGoodNeighbours, numGoodNeighbours+numBadNeighbours);
 				}
 			}
-
-			lock.lock();
-		}
-		else
-		{
-			newCurrentFrameSignal.wait(lock);
 		}
 	}
 
-	delete tracker;
+	return false;
+}
+
+
+bool Relocalizer::searchSynchronously()
+{
+	std::shared_ptr<Frame> frame = CurrentRelocFrame;
+	CurrentRelocFrame.reset();
+	if(!frame || KFForReloc.empty())
+		return false;
+
+	if(syncTracker == 0)
+		syncTracker = new SE3Tracker(w,h,K);
+
+	Frame* resultBest = 0;
+	SE3 resultBestToFrame;
+	float resultBestScore = 0;
+
+	for(Frame* kf : KFForReloc)
+	{
+		Frame* bestKF = 0;
+		SE3 bestKFToFrame;
+		float score = 0;
+		if(!evaluateCandidate(syncTracker, kf, frame, bestKF, bestKFToFrame, score))
+			continue;
+
+		if(resultBest == 0 || score > resultBestScore || (score == resultBestScore && bestKF->id() < resultBest->id()))
+		{
+			resultBest = bestKF;
+			resultBestToFrame = bestKFToFrame;
+			resultBestScore = score;
+		}
+	}
+
+	if(resultBest == 0)
+		return false;
+
+	resultRelocFrame = frame;
+	resultFrameID = frame->id();
+	resultKF = resultBest;
+	resultFrameToKeyframe = resultBestToFrame.inverse();
+	hasResult = true;
+	return true;
 }
 }
